@@ -1,0 +1,13 @@
+[Server] Connected
+[User] hi
+[Server] Hello, User!
+[User] ji
+[Server] I'm sorry, I don't understand.
+[User] adasd
+[Server] I'm sorry, I don't understand.
+[User] ad
+[Server] I'm sorry, I don't understand.
+[User] asd
+[Server] I'm sorry, I don't understand.
+[User] asda
+[Server] I'm sorry, I don't understand.

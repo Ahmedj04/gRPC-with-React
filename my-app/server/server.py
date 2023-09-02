@@ -6,6 +6,7 @@ import time
 import chat_pb2 as chat
 import chat_pb2_grpc as rpc
 
+
 class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf rpc file which is generated
 
     def __init__(self):
@@ -28,7 +29,7 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
         
         if not self.initial_message_sent:
             # Send the initial message to the client
-            initial_message = chat.Note(name="Server", message=f"Hi, This is Jarvis, What can I do for you!")
+            initial_message = chat.Note(name="Server", message=f"Connected")
             self.initial_message_sent = True
 
             yield initial_message
@@ -60,6 +61,8 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
    
     def SendNote(self, request: chat.Note, context):
         client_message = request.message.lower()  # Get the client's message in lowercase
+
+        print(client_message)
         
         if "hi" == client_message:
             response_message = f"Hello, {request.name}!"
@@ -82,14 +85,17 @@ class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf r
             
             if self.initial_message_sent:
                 # Save the initial message to the file
-                f.write(f"[Server] Hi, This is Jarvis, What can I do for you!\n")
-
+                f.write(f"[Server] Connected\n")
+            
+            print(self.chats)
+            
             for chat_note in self.chats:
                 f.write(f"[{chat_note.name}] {chat_note.message}\n")
 
 
 if __name__ == '__main__':
     port = 11912  # a random port for the server to run on
+
     # the workers is like the amount of threads that can be opened at the same time, when there are 10 clients connected
     # then no more clients able to connect to the server.
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))  # create a gRPC server

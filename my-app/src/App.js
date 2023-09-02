@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import * as grpcWeb from 'grpc-web';
+// import * as grpcWeb from 'grpc-web';
 import { ChatServerClient } from './proto/chat_grpc_web_pb';
 import { Note, Empty } from './proto/chat_pb';
-
-const client = new ChatServerClient('http://localhost:11912', null, null);
-
 
 function App() {
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState('');
+  const client = new ChatServerClient('http://localhost:8080', null, null);
+
+  useEffect(() => {
+    startChat();
+  }, [])
 
   const startChat = () => {
-    alert('Starting chat...');
     const stream = client.chatStream(new Empty());
-    console.log(stream.on)
     stream.on('data', response => {
+      console.log(JSON.stringify([...messages, response]))
       setMessages(prevMessages => [...prevMessages, response]);
     });
   };
@@ -31,24 +32,25 @@ function App() {
         setMessages(prevMessages => [...prevMessages, note]);
       }
     });
-    
-
     setMessageText('');
   };
-
-  useEffect(() => {
-    startChat();
-  }, []);
 
   return (
     <div>
       <h1>Chat App</h1>
       <div>
+
+        {JSON.stringify(messages.length)}
+
         {messages.map((msg, index) => (
           <div key={index}>
+
             <strong>{msg.getName()}: </strong>
+            
             {msg.getMessage()}
+
           </div>
+
         ))}
       </div>
       <div>
@@ -59,6 +61,7 @@ function App() {
         />
         <button onClick={sendMessage}>Send</button>
       </div>
+
     </div>
   );
 }
