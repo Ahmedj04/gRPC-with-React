@@ -7,5 +7,6 @@ python server.py
 
 # run my-app
 cd my-app
+npm install
 npm start
 
