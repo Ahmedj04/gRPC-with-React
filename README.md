@@ -1,0 +1,11 @@
+# Run Docker
+docker compose up -d
+
+# run server file
+cd server
+python server.py
+
+# run my-app
+cd my-app
+npm start
+
