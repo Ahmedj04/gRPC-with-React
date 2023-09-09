@@ -1,111 +1,116 @@
 from concurrent import futures
-
 import grpc
 import time
 
-import chat_pb2 as chat
-import chat_pb2_grpc as rpc
+import msg_pb2 as chat
+import msg_pb2_grpc as rpc
 
-
-class ChatServer(rpc.ChatServerServicer):  # inheriting here from the protobuf rpc file which is generated
+class ChatServer(rpc.ChatServerServicer):
 
     def __init__(self):
-        # List with all the chat history
-        self.chats = []
+        self.hotel_chat_apps = {}  # Dictionary to store hotel chat apps
         self.initial_message_sent = False  # Flag to track if initial message has been sent
-
-
-    # The stream which will be used to send new messages to clients
+        self.message_history = {}  # Dictionary to store message history for each hotel
+    
     def ChatStream(self, request_iterator, context):
-        """
-        This is a response-stream type call. This means the server can keep sending messages
-        Every client opens this connection and waits for server to send new messages
-
-        :param request_iterator:
-        :param context:
-        :return:
-        """
-        lastindex = 0
-        
-        if not self.initial_message_sent:
-            # Send the initial message to the client
-            initial_message = chat.Note(name="Server", message=f"Connected")
-            self.initial_message_sent = True
-
-            yield initial_message
-
-        # For every client a infinite loop starts (in gRPC's own managed thread)
-        # This loop continuously checks for new messages in the chats list and
-        # sends any new messages to the connected clients.
+        # Stream new messages to clients
         while True:
+            if not self.initial_message_sent:
+                # Send the initial message to the client
+                initial_message = chat.ChatMessage(from_user_id="Server", content=f"Connected")
+                self.initial_message_sent = True
+                print(initial_message)
+                print("++"*20)
+                yield initial_message
+
             # Check if there are any new messages
-            while len(self.chats) > lastindex:
-                n = self.chats[lastindex]
-                lastindex += 1
-                yield n
-    
-    # def SendNote(self, request: chat.Note, context):
-        print("[{}] {}".format(request.name, request.message))
-        
-        client_message = request.message  # Get the client's message
-        
-        response_message = f"Hi, {request.name}! You said: {client_message}"
-        response_note = chat.Note(name="Server", message=response_message)  # Create a Note message
-        self.chats.append(request)  # Add the client's message to the chat history
-        self.chats.append(response_note)  # Add the response to the chat history
-        
-        return response_note  # Respond with the combined message
-    
-    # This method handles incoming messages from clients.
-    # It processes the client's message, prepares a response, adds both the client's message and the response to the chat history, and returns the response.
+            for hotel_id, messages in self.hotel_chat_apps.items():
+                # Check if there are new messages for the hotel
+                if messages:
+                    print(self.hotel_chat_apps)
+                    print("=="*20)
+                    print(messages)
+                    # Yield each new message to the client
+                    for message in messages:
+                        yield message
+                        # Store the message in the message history
+                        if hotel_id not in self.message_history:
+                            self.message_history[hotel_id] = []
+                        self.message_history[hotel_id].append(message)
+                    # Clear the hotel's message queue after sending
+                    self.hotel_chat_apps[hotel_id] = []
+
+    def SendChatMessage(self, request: chat.ChatMessage, context):
+        # Check if the hotel ID is provided in the message
+
+        if not hotel_id:
+            return chat.Empty()  # Return an empty response or handle the error
+
+        # Check if the hotel chat app exists, and if not, create one
+        if hotel_id not in self.hotel_chat_apps:
+            self.hotel_chat_apps[hotel_id] = []  # Create a chat app list for the hotel
+
+        # Append the message to the chat app of the specified hotel
+        msg=f"{request.hotel_id}::{request.from_user_id}::{request.to_user_id}::{request.content}"
+        self.hotel_chat_apps[hotel_id].append(msg)
+        # self.hotel_chat_apps[hotel_id].append(request)
+
+        # Store the message in the message history
+        if hotel_id not in self.message_history:
+            self.message_history[hotel_id] = []
+
+        self.message_history[hotel_id].append(msg)
+        # self.message_history[hotel_id].append(request)
+
+        print(f"Received message for Hotel {hotel_id}: {request.content}")
+
+        #   # Print the chat messages for debugging
+        # print(f"Chat Messages for Hotel {hotel_id}:")
+
+        # for message in self.message_history[hotel_id]:
+        #     print(f" {message.from_user_id}: {message.content}")
+
+        # print("hotel chats ",self.hotel_chat_apps)
+        # print("message history ",self.message_history)
+
+
+        return chat.Empty()
    
-    def SendNote(self, request: chat.Note, context):
-        client_message = request.message.lower()  # Get the client's message in lowercase
+        # Check if the hotel ID is provided in the message
+        hotel_id = request.hotel_id
+        if not hotel_id:
+            return chat.Empty()  # Return an empty response or handle the error
 
-        print(client_message)
-        
-        if "hi" == client_message:
-            response_message = f"Hello, {request.name}!"
-        elif "how is the weather" == client_message:
-            response_message = "The weather is good!"
-        else:
-            response_message = "I'm sorry, I don't understand."
-        
-        response_note = chat.Note(name="Server", message=response_message)  # Create a Note message
-        self.chats.append(request)  # Add the client's message to the chat history
-        self.chats.append(response_note)  # Add the response to the chat history
+        # Check if the hotel chat app exists, and if not, create one
+        if hotel_id not in self.hotel_chat_apps:
+            self.hotel_chat_apps[hotel_id] = []  # Create a chat app list for the hotel
 
-         # Save the updated chat history to the file
-        self.save_chats_to_file()
-        
-        return response_note  # Respond with the appropriate message
+        # Append the message to the chat app of the specified hotel
+        self.hotel_chat_apps[hotel_id].append(request)
 
-    def save_chats_to_file(self):
-        with open("chat_history.txt", "w") as f:
-            
-            if self.initial_message_sent:
-                # Save the initial message to the file
-                f.write(f"[Server] Connected\n")
-            
-            print(self.chats)
-            
-            for chat_note in self.chats:
-                f.write(f"[{chat_note.name}] {chat_note.message}\n")
+        # Store the message in the message history
+        if hotel_id not in self.message_history:
+            self.message_history[hotel_id] = []
+        self.message_history[hotel_id].append(request)
+
+        print(f"Received message for Hotel {hotel_id}: {request.content}")
+
+        # Print the chat messages for debugging
+        print(f"Chat Messages for Hotel {hotel_id}:")
+
+        for message in self.message_history[hotel_id]:
+            print(f" {message.from_user_id}: {message.content}")
+
+    
+    
 
 
 if __name__ == '__main__':
     port = 11912  # a random port for the server to run on
-
-    # the workers is like the amount of threads that can be opened at the same time, when there are 10 clients connected
-    # then no more clients able to connect to the server.
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))  # create a gRPC server
-    rpc.add_ChatServerServicer_to_server(ChatServer(), server)  # register the server to gRPC
-    # gRPC basically manages all the threading and server responding logic, which is perfect!
-    print('Starting server. Listening at port 11912...')
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    rpc.add_ChatServerServicer_to_server(ChatServer(), server)
+    print('Starting server. Msg.proto file being used. Listening...')
     server.add_insecure_port('[::]:' + str(port))
     server.start()
-    # Server starts in background (in another thread) so keep waiting
-    # if we don't wait here the ma  in thread will end, which will end all the child threads, and thus the threads
-    # from the server won't continue to work and stop the server
     while True:
         time.sleep(64 * 64 * 100)
