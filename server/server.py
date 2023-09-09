@@ -19,17 +19,12 @@ class ChatServer(rpc.ChatServerServicer):
                 # Send the initial message to the client
                 initial_message = chat.ChatMessage(from_user_id="Server", content=f"Connected")
                 self.initial_message_sent = True
-                print(initial_message)
-                print("++"*20)
                 yield initial_message
 
             # Check if there are any new messages
             for hotel_id, messages in self.hotel_chat_apps.items():
                 # Check if there are new messages for the hotel
                 if messages:
-                    print(self.hotel_chat_apps)
-                    print("=="*20)
-                    print(messages)
                     # Yield each new message to the client
                     for message in messages:
                         yield message
@@ -42,7 +37,7 @@ class ChatServer(rpc.ChatServerServicer):
 
     def SendChatMessage(self, request: chat.ChatMessage, context):
         # Check if the hotel ID is provided in the message
-
+        hotel_id = request.hotel_id
         if not hotel_id:
             return chat.Empty()  # Return an empty response or handle the error
 
@@ -51,27 +46,23 @@ class ChatServer(rpc.ChatServerServicer):
             self.hotel_chat_apps[hotel_id] = []  # Create a chat app list for the hotel
 
         # Append the message to the chat app of the specified hotel
-        msg=f"{request.hotel_id}::{request.from_user_id}::{request.to_user_id}::{request.content}"
-        self.hotel_chat_apps[hotel_id].append(msg)
-        # self.hotel_chat_apps[hotel_id].append(request)
+        self.hotel_chat_apps[hotel_id].append(request)
 
         # Store the message in the message history
         if hotel_id not in self.message_history:
             self.message_history[hotel_id] = []
-
-        self.message_history[hotel_id].append(msg)
-        # self.message_history[hotel_id].append(request)
+        self.message_history[hotel_id].append(request)
 
         print(f"Received message for Hotel {hotel_id}: {request.content}")
 
-        #   # Print the chat messages for debugging
-        # print(f"Chat Messages for Hotel {hotel_id}:")
+          # Print the chat messages for debugging
+        print(f"Chat Messages for Hotel {hotel_id}:")
 
-        # for message in self.message_history[hotel_id]:
-        #     print(f" {message.from_user_id}: {message.content}")
+        for message in self.message_history[hotel_id]:
+            print(f" {message.from_user_id}: {message.content}")
 
-        # print("hotel chats ",self.hotel_chat_apps)
-        # print("message history ",self.message_history)
+        # print(self.hotel_chat_apps)
+        print("message history ",self.message_history)
 
 
         return chat.Empty()
